@@ -5,11 +5,7 @@ const { users } = require('../models/index.js');
 async function handleSignup(req, res, next) {
   try {
     let userRecord = await users.create(req.body);
-    const output = {
-      user: userRecord,
-      token: userRecord.token
-    };
-    res.status(201).json(output);
+    res.status(201).json(userRecord);
   } catch (e) {
     console.error('Error in handleSignup:', e.message);
     next(e);
@@ -18,11 +14,15 @@ async function handleSignup(req, res, next) {
 
 async function handleSignin(req, res, next) {
   try {
-    const user = {
-      user: req.user,
-      token: req.user.token
+    const output = {
+      user: {
+        _id: req.user.id,
+        username: req.user.username,
+      },
+      token: req.user.token,
     };
-    res.status(200).json(user);
+    console.log('req.user', req.user);
+    res.status(200).json(output);
   } catch (e) {
     console.error('Error in handleSignin:', e.message);
     next(e);
@@ -45,7 +45,7 @@ function handleSecret(req, res, next) {
 }
 
 function handleHello(req, res, next) {
-  res.status(200).send(`Hello from ${req.name}! This route is now secured by HTTP Basic authentication`)
+  res.status(200).send(`Hello from ${req.query.name}! This route is now secured by HTTP Basic authentication`)
 }
 
 module.exports = {
