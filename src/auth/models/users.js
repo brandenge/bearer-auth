@@ -2,6 +2,7 @@
 
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const SECRET = process.env.SECRET || "TEST_SECRET";
 
 const userSchema = (sequelize, DataTypes) => {
   const model = sequelize.define('User', {
@@ -10,36 +11,49 @@ const userSchema = (sequelize, DataTypes) => {
     token: {
       type: DataTypes.VIRTUAL,
       get() {
-        return jwt.sign({ username: this.username });
+        return jwt.sign({ username: this.username }, SECRET, {expiresIn: '15m'});
+      },
+      set(token) {
+        return jwt.sign(token, SECRET, {expiresIn: '15m'});
       }
     }
   });
 
   model.beforeCreate(async (user) => {
-    let hashedPass = bcrypt.hash(user.password, 10);
-    user.password = hashedPass;
+    try {
+      let hashedPass = await bcrypt.hash(user.password, 10);
+      user.password = hashedPass;
+    } catch (e) {
+      console.error('Error in beforeCreate:', e.message);
+      throw new Error(e);
+    }
   });
 
   // Basic AUTH: Validating strings (username, password)
   model.authenticateBasic = async function (username, password) {
-    const user = await this.findOne({ username })
-    const valid = await bcrypt.compare(password, user.password)
-    if (valid) { return user; }
-    throw new Error('Invalid User');
-  }
-
-  // Bearer AUTH: Validating a token
-  model.authenticateToken = async function (token) {
     try {
-      const parsedToken = jwt.verify(token, process.env.SECRET);
-      const user = this.findOne({ username: parsedToken.username })
-      if (user) { return user; }
-      throw new Error("User Not Found");
+      const user = await this.findOne({ where: { username } });
+      const valid = await bcrypt.compare(password, user.password);
+      if (valid) return user;
+      throw new Error('Invalid User');
     } catch (e) {
-      throw new Error(e.message)
+      console.error('Error in authenticateBasic:', e.message);
+      throw new Error(e);
     }
   }
 
+  // Bearer AUTH: Validating a token
+  model.authenticateWithToken = async function (token) {
+    try {
+      const parsedToken = jwt.verify(token, SECRET);
+      const user = await this.findOne({ where: { username: parsedToken.username } });
+      if (user) return user;
+      throw new Error('User Not Found');
+    } catch (e) {
+      console.error('Error in authenticateToken:', e.message);
+      throw new Error(e);
+    }
+  }
   return model;
 }
 

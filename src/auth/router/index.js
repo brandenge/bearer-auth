@@ -9,12 +9,14 @@ const {
   handleSignin,
   handleSignup,
   handleGetUsers,
-  handleSecret
+  handleSecret,
+  handleHello,
 } = require('./handlers.js');
 
 authRouter.post('/signup', handleSignup);
 authRouter.post('/signin', basicAuth, handleSignin);
 authRouter.get('/users', bearerAuth, handleGetUsers);
 authRouter.get('/secret', bearerAuth, handleSecret);
+authRouter.get('/hello', basicAuth, handleHello);
 
 module.exports = authRouter;
